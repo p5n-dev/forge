@@ -7,7 +7,7 @@ require (
 	github.com/containers/gvisor-tap-vsock v0.8.8
 	github.com/kdomanski/iso9660 v0.4.0
 	github.com/rs/zerolog v1.35.1
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.47.0
 	golang.org/x/term v0.39.0
@@ -39,7 +39,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
