@@ -1,0 +1,64 @@
+name: image
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  image:
+    # ARM64 GitHub-hosted runner so virt-customize can write to an arm64
+    # qcow2 natively. If the org doesn't have access to the arm runners,
+    # swap to ubuntu-24.04 and add `qemu-user-static qemu-system-arm` to
+    # the apt install line — virt-customize will use binfmt emulation
+    # (slower, but works on x86_64).
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        # Pinned syft installer + version. Both refreshed by
+        # scripts/refresh-pins.sh; the constants here are kept in
+        # lock-step with images/base/Dockerfile by the same script.
+        env:
+          SYFT_VERSION: 1.43.0
+          SYFT_INSTALLER_SHA256: 8a277b4b4dc21809ecd9a0e4926f4d7319affc6451a607fdeb3e5e1fbd9bc573
+        run: |
+          # apt packages are intentionally NOT version-pinned: the
+          # ubuntu-24.04-arm runner is itself version-pinned by GitHub
+          # Actions, and apt verifies each .deb against Ubuntu's
+          # GPG-signed Release file. See CLAUDE.md § "Supply-chain
+          # hardening" for the rationale.
+          sudo apt-get update
+          sudo apt-get install -y libguestfs-tools qemu-utils
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh -o /tmp/syft-install.sh
+          echo "${SYFT_INSTALLER_SHA256}  /tmp/syft-install.sh" | sha256sum -c -
+          sudo sh /tmp/syft-install.sh -b /usr/local/bin "v${SYFT_VERSION}"
+          rm -f /tmp/syft-install.sh
+
+      - name: Resolve version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build base image + SBOMs
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        working-directory: images/base
+        run: ./build.sh
+
+      - name: Upload artefacts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          files: |
+            images/base/output/forge-base-*-arm64.img.gz
+            images/base/output/sbom.spdx.json
+            images/base/output/sbom.cdx.json
+            images/base/output/SHA256SUMS

@@ -1,0 +1,9 @@
+bootstrap:
+  k3s: v1.32.0+k3s1
+  rage: v0.4.2
+  claude_code: latest
+
+defaults:
+  cpus: 2
+  memory: 4096
+  disk: 20480

@@ -1,0 +1,142 @@
+name: release
+
+# Continuous-delivery release: every push to main that touches code
+# produces a versioned binary on the GitHub Releases page. Markdown,
+# docs, and other non-code edits are explicitly skipped via
+# paths-ignore so doc fixes don't churn the release timeline.
+#
+# For tag-driven releases (e.g. signed semver milestones), push a
+# v* tag manually — the existing image.yml workflow already handles
+# the base-image side of that path. This file is the CLI binary side.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      # Pure-doc / metadata changes shouldn't ship a new binary.
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
+      - ".gitleaks.toml"
+      - ".pre-commit-config.yaml"
+      # Other workflows + image-build pipeline have their own release
+      # cadence (image.yml fires on tag push); editing them shouldn't
+      # cut a new CLI release.
+      - ".github/workflows/image.yml"
+      - "images/**"
+  workflow_dispatch:
+    # Manual trigger lets a maintainer cut a release without pushing
+    # a code commit — useful for re-running after a transient failure.
+
+permissions:
+  contents: write # required by softprops/action-gh-release
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Need full history so go list / version derivation see tags.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Compute version
+        id: version
+        # Date + workflow run number + short SHA. Sortable, unique,
+        # human-readable. Example: v2026.05.06.42-gabc1234. Includes
+        # `-g<sha>` to mirror `git describe --always` style so tooling
+        # that parses semver-ish strings still finds a sha to reference.
+        run: |
+          VERSION="v$(date -u +%Y.%m.%d).${{ github.run_number }}-g$(git rev-parse --short HEAD)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building ${VERSION}"
+
+      - name: Build darwin-arm64
+        env:
+          GOOS: darwin
+          GOARCH: arm64
+          # Pure-Go build (no CGo) so cross-compile from Linux works
+          # without a darwin toolchain. FORGE has no CGo deps.
+          CGO_ENABLED: "0"
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p dist
+          MODULE="$(go list -m)"
+          # -trimpath strips local build paths from the binary so
+          # reproducibility is closer to bit-identical across builds
+          # (modulo timestamps inside the Go toolchain). -s -w drop
+          # the symbol table + DWARF; the version string we inject
+          # via -X is what `forge version` prints.
+          go build \
+            -trimpath \
+            -ldflags "-s -w -X '${MODULE}/cmd.version=${VERSION}'" \
+            -o dist/forge-darwin-arm64 \
+            .
+
+      - name: Build darwin-amd64
+        env:
+          GOOS: darwin
+          GOARCH: amd64
+          CGO_ENABLED: "0"
+          VERSION: ${{ steps.version.outputs.version }}
+        # Intel Macs aren't FORGE's primary target (Apple Virtualization
+        # .framework on Apple Silicon is the supported config), but the
+        # cross-compile is essentially free and a few users still ride
+        # x86 boxes for testing. Drop this step if it ever becomes
+        # maintenance noise.
+        run: |
+          MODULE="$(go list -m)"
+          go build \
+            -trimpath \
+            -ldflags "-s -w -X '${MODULE}/cmd.version=${VERSION}'" \
+            -o dist/forge-darwin-amd64 \
+            .
+
+      - name: Compute SHA256SUMS
+        working-directory: dist
+        run: |
+          sha256sum forge-darwin-arm64 forge-darwin-amd64 > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          body: |
+            Auto-built from `${{ github.sha }}`.
+
+            **Install**
+            ```sh
+            # Apple Silicon
+            curl -L -o forge https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/forge-darwin-arm64
+            chmod +x forge
+            sudo install -m 0755 forge /usr/local/bin/forge
+
+            # Verify
+            forge version    # should print: forge ${{ steps.version.outputs.version }}
+            ```
+
+            **Verify integrity**
+            ```sh
+            curl -L -o SHA256SUMS https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/SHA256SUMS
+            shasum -a 256 -c SHA256SUMS
+            ```
+          files: |
+            dist/forge-darwin-arm64
+            dist/forge-darwin-amd64
+            dist/SHA256SUMS
