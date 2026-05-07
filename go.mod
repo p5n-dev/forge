@@ -6,7 +6,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/containers/gvisor-tap-vsock v0.8.8
 	github.com/kdomanski/iso9660 v0.4.0
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.35.1
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.47.0
@@ -27,7 +27,7 @@ require (
 	github.com/insomniacslk/dhcp v0.0.0-20240710054256-ddd8a41251c9 // indirect
 	github.com/linuxkit/virtsock v0.0.0-20220523201153-1a23e78aa7a2 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mdlayher/socket v0.4.1 // indirect
