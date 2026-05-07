@@ -52,7 +52,7 @@ jobs:
         run: ./build.sh
 
       - name: Upload artefacts to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           draft: false
           fail_on_unmatched_files: true
