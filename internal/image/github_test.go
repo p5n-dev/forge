@@ -37,7 +37,7 @@ func newGitHubServer(t *testing.T, owner, repo string, releases []fakeRelease) *
 	t.Cleanup(srv.Close)
 
 	releasePath := func(tag string) string {
-		return fmt.Sprintf("/repos/%s/%s/releases/tag/%s", owner, repo, tag)
+		return fmt.Sprintf("/repos/%s/%s/releases/tags/%s", owner, repo, tag)
 	}
 	downloadPath := func(tag, name string) string {
 		return fmt.Sprintf("/download/%s/%s/%s/%s", owner, repo, tag, name)

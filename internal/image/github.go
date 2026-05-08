@@ -142,7 +142,7 @@ func (s *GitHubReleasesSource) Pull(ctx context.Context, version, destPath strin
 		return fmt.Errorf("creating destination %s: %w", destPath, err)
 	}
 
-	url := fmt.Sprintf("%s/repos/%s/%s/releases/tag/%s", s.baseURL, s.owner, s.repo, version)
+	url := fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s", s.baseURL, s.owner, s.repo, version)
 	var rel ghRelease
 	if err := s.getJSON(ctx, url, &rel); err != nil {
 		return err
