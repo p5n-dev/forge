@@ -1,0 +1,15 @@
+[Unit]
+Description=FORGE boot-complete vsock signal
+After=cloud-final.service network-online.target
+Wants=network-online.target
+Requires=cloud-final.service
+ConditionPathExists=!/var/lib/forge/ready.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/forge-ready
+ExecStartPost=/bin/sh -c 'mkdir -p /var/lib/forge && touch /var/lib/forge/ready.done'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

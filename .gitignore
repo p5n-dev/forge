@@ -1,0 +1,9 @@
+.claude
+actions-runner
+images/base/build/*
+images/base/output/*
+docs/cage*
+docs/rage*
+
+# Locally-built CLI binary; release artefacts are produced by CI.
+/forge

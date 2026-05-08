@@ -1,0 +1,77 @@
+name: image
+
+# Tag-driven base image build. On v* tag push, builds the FORGE thin
+# base image (.qcow2 + SBOMs) inside a controlled Docker container
+# and uploads the artefacts to the GitHub Release the tag created.
+#
+# The container path (build-in-docker.sh) is the same one developers
+# use locally — what passes locally is what runs here. Avoids the
+# "host libguestfs vs Azure-runner quirks" rabbit hole that bit us
+# with vmlinuz perms (067acdf) and passt-as-nobody (66444b8).
+#
+# workflow_dispatch lets a maintainer re-run the build without
+# re-pushing a tag. When triggered from a branch (no v* tag), the
+# build runs end-to-end but the upload step is skipped — useful for
+# verifying CI changes without spamming the Releases page.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  image:
+    # ARM64 GitHub-hosted runner so libguestfs + qemu-system-aarch64
+    # can write to an arm64 qcow2 natively. ubuntu-24.04-arm has Docker
+    # pre-installed; build-in-docker.sh handles everything else inside
+    # the container, so this job needs nothing else from the host.
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve version
+        id: version
+        # On tag push: VERSION is the tag minus the leading 'v', and
+        # the upload step fires.
+        # On workflow_dispatch from a branch: VERSION is dev-<sha>,
+        # the upload step skips. Build runs end-to-end either way.
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+              echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+              echo "is_release=true" >> "$GITHUB_OUTPUT"
+              echo "Building release ${GITHUB_REF_NAME}"
+          else
+              echo "version=dev-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+              echo "is_release=false" >> "$GITHUB_OUTPUT"
+              echo "Dry run from ${GITHUB_REF_NAME} (no upload)"
+          fi
+
+      - name: Build base image + SBOMs (in docker)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        working-directory: images/base
+        # Identical path to local builds. To reproduce a CI failure
+        # on your Mac:
+        #     cd images/base && VERSION=0.1.0 ./build-in-docker.sh
+        # Same Dockerfile, same build.sh, same artefacts. ~3 min
+        # cycle locally with builder layer cached.
+        run: ./build-in-docker.sh
+
+      - name: Upload artefacts to release
+        if: steps.version.outputs.is_release == 'true'
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: false
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          files: |
+            images/base/output/forge-base-*-arm64.img.gz
+            images/base/output/sbom.spdx.json
+            images/base/output/sbom.cdx.json
+            images/base/output/SHA256SUMS

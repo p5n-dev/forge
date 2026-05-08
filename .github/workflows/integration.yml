@@ -1,0 +1,96 @@
+name: integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Concurrent runs would clash on the shared VM/Forgejo state on the runner.
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    # Self-hosted macOS Apple Silicon runner with vfkit + Docker installed.
+    # `runs-on:` is matched case-SENSITIVELY against what the runner
+    # advertises. The macOS-arm64 runner build registers `macOS` +
+    # `ARM64` (capital), the osx-x64 build registers `macOS` + `X64`.
+    # Apple Silicon hosts MUST install the arm64 runner build — the
+    # x64 build runs under Rosetta and lies about its arch, which
+    # both screws up label matching here AND can produce subtly
+    # wrong binaries from `go test ./...` (compiling for x86_64 on
+    # an Apple Silicon host).
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify host dependencies
+        run: |
+          which vfkit
+          which docker
+          docker info
+
+      - name: Build and install forge
+        run: |
+          make build
+          sudo install -m 0755 forge /usr/local/bin/forge
+
+      - name: Pull base image (skip if no release yet)
+        id: image_pull
+        # Bootstrap-friendly: on a fresh repo with no v* tag pushed yet,
+        # there's no base image release to fetch and the VM-lifecycle
+        # steps below get skipped (without failing the whole job). To
+        # publish the first base image, push a tag like
+        #   git tag v$(date -u +%Y.%m.%d).1 && git push origin --tags
+        # which fires .github/workflows/image.yml.
+        run: |
+          if forge image pull; then
+            echo "have_image=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=No FORGE base image::No release found at github.com/${{ github.repository }}/releases. Push a v* tag to fire image.yml and produce one. Subsequent VM-lifecycle steps in this job will be skipped."
+            echo "have_image=false" >> "$GITHUB_OUTPUT"
+          fi
+        continue-on-error: true
+
+      - name: Start Forgejo
+        if: steps.image_pull.outputs.have_image == 'true'
+        run: forge system start
+
+      - name: Create env
+        if: steps.image_pull.outputs.have_image == 'true'
+        run: forge env create ci-test --cpus 2 --memory 4096 --disk 20480
+
+      - name: Verify SSH reachability
+        if: steps.image_pull.outputs.have_image == 'true'
+        run: |
+          IP=$(jq -r .ip "$HOME/.forge/envs/ci-test/state.json")
+          test -n "$IP"
+          ssh -i "$HOME/.forge/envs/ci-test/id_ed25519" \
+              -o StrictHostKeyChecking=accept-new \
+              -o UserKnownHostsFile=/dev/null \
+              -o ConnectTimeout=15 \
+              forge@"$IP" echo "ok-from-vm"
+
+      - name: Lifecycle stop / start / destroy
+        if: steps.image_pull.outputs.have_image == 'true'
+        run: |
+          forge env stop ci-test
+          forge env start ci-test
+          forge env destroy ci-test --force
+
+      - name: Cleanup
+        if: always() && steps.image_pull.outputs.have_image == 'true'
+        run: |
+          forge env destroy ci-test --force || true
+          forge system stop || true

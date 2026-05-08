@@ -1,0 +1,134 @@
+name: release
+
+# Tag-driven semver releases. Push a v* tag (e.g. `v0.1.0`) and this
+# workflow cross-compiles the forge CLI for darwin-arm64 + darwin-amd64
+# and attaches the binaries + SHA256SUMS to the GitHub Release that the
+# tag creates. The sibling image.yml workflow fires on the same tag and
+# attaches the base image .qcow2 + SBOMs to the same release, so a
+# single `git push origin v0.1.0` produces one curated release with
+# everything in it.
+#
+# Pre-1.0 (v0.x.y) is socially-sanctioned "still evolving" — break
+# things between v0.1.x and v0.2.x freely. Promote to v1.0.0 when the
+# CLI surface, on-disk layout, and base-image contract are stable.
+#
+# workflow_dispatch is kept for re-running after a transient failure
+# (build flake, GitHub upload glitch) without having to re-push the tag.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    # Manual trigger for re-running after a transient failure.
+
+permissions:
+  contents: write # required by softprops/action-gh-release
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Resolve version from tag
+        id: version
+        # The trigger is a `v*` tag push, so GITHUB_REF_NAME is the tag
+        # itself (e.g. `v0.1.0`). On workflow_dispatch from a tag the
+        # same is true; from a branch the operator must push a tag.
+        run: |
+          if [[ "${GITHUB_REF_NAME}" != v* ]]; then
+              echo "::error::release.yml must be triggered by a v* tag (got '${GITHUB_REF_NAME}')"
+              exit 1
+          fi
+          echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Building ${GITHUB_REF_NAME}"
+
+      - name: Build darwin-arm64
+        env:
+          GOOS: darwin
+          GOARCH: arm64
+          # Pure-Go build (no CGo) so cross-compile from Linux works
+          # without a darwin toolchain. FORGE has no CGo deps.
+          CGO_ENABLED: "0"
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p dist
+          MODULE="$(go list -m)"
+          # -trimpath strips local build paths from the binary so
+          # reproducibility is closer to bit-identical across builds
+          # (modulo timestamps inside the Go toolchain). -s -w drop
+          # the symbol table + DWARF; the version string we inject
+          # via -X is what `forge version` prints.
+          go build \
+            -trimpath \
+            -ldflags "-s -w -X '${MODULE}/cmd.version=${VERSION}'" \
+            -o dist/forge-darwin-arm64 \
+            .
+
+      - name: Build darwin-amd64
+        env:
+          GOOS: darwin
+          GOARCH: amd64
+          CGO_ENABLED: "0"
+          VERSION: ${{ steps.version.outputs.version }}
+        # Intel Macs aren't FORGE's primary target (Apple Virtualization
+        # .framework on Apple Silicon is the supported config), but the
+        # cross-compile is essentially free and a few users still ride
+        # x86 boxes for testing. Drop this step if it ever becomes
+        # maintenance noise.
+        run: |
+          MODULE="$(go list -m)"
+          go build \
+            -trimpath \
+            -ldflags "-s -w -X '${MODULE}/cmd.version=${VERSION}'" \
+            -o dist/forge-darwin-amd64 \
+            .
+
+      - name: Compute SHA256SUMS
+        working-directory: dist
+        run: |
+          sha256sum forge-darwin-arm64 forge-darwin-amd64 > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          body: |
+            Auto-built from `${{ github.sha }}`.
+
+            **Install**
+            ```sh
+            # Apple Silicon
+            curl -L -o forge https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/forge-darwin-arm64
+            chmod +x forge
+            sudo install -m 0755 forge /usr/local/bin/forge
+
+            # Verify
+            forge version    # should print: forge ${{ steps.version.outputs.version }}
+            ```
+
+            **Verify integrity**
+            ```sh
+            curl -L -o SHA256SUMS https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/SHA256SUMS
+            shasum -a 256 -c SHA256SUMS
+            ```
+          files: |
+            dist/forge-darwin-arm64
+            dist/forge-darwin-amd64
+            dist/SHA256SUMS

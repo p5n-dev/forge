@@ -1,0 +1,9 @@
+bootstrap:
+  k3s: v1.32.0+k3s1
+  claude_code: latest
+  helm: v3.20.2
+
+defaults:
+  cpus: 2
+  memory: 4096
+  disk: 20480
