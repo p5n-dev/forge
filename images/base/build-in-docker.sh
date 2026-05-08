@@ -14,7 +14,7 @@
 #
 # Examples:
 #   ./build-in-docker.sh
-#   VERSION=0.2.0-rc1 ./build-in-docker.sh
+#   VERSION=v0.2.0-rc1 ./build-in-docker.sh
 #   VERSION=trixie-test DEBIAN_VERSION=13 DEBIAN_RELEASE=trixie ./build-in-docker.sh
 
 set -euo pipefail

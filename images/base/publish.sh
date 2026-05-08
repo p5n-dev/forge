@@ -5,7 +5,7 @@
 #   gh CLI authenticated (GH_TOKEN env or `gh auth login`)
 #
 # Environment variables:
-#   VERSION    — image version tag (required)
+#   VERSION    — image version tag including the 'v' prefix, e.g. v0.1.1 (required)
 #   ARCH       — target architecture (default: arm64)
 #   OUTPUT_DIR — where build.sh wrote artefacts (default: ./output)
 #   REPO       — GitHub repo, owner/name (default: p5n-dev/forge)
@@ -35,7 +35,7 @@ for f in "$IMG" "$SBOM_SPDX" "$SBOM_CDX" "$SUMS"; do
     [ -f "$f" ] || { echo "error: missing artefact: $f" >&2; exit 1; }
 done
 
-TAG="v${VERSION}"
+TAG="${VERSION}"
 
 echo "==> Publishing release ${TAG} to ${REPO}"
 gh release create "$TAG" \
