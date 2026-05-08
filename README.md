@@ -105,8 +105,8 @@ FORGE only needs `docker` and `docker compose` on PATH and a daemon for them to 
 Pre-built binaries are published to [GitHub Releases](https://github.com/p5n-dev/forge/releases) on every code-touching push to `main` (markdown-only edits don't trigger a release). Apple Silicon is the supported runtime.
 
 ```sh
-# Pick the latest release tag from the Releases page (e.g. v2026.05.06.42-gabc1234).
-TAG=v2026.05.06.42-gabc1234
+# Pick the latest release tag from the Releases page (e.g. v0.1.0).
+TAG=v0.1.0
 curl -L -o forge \
     "https://github.com/p5n-dev/forge/releases/download/${TAG}/forge-darwin-arm64"
 chmod +x forge
