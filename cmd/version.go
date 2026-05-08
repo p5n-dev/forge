@@ -25,20 +25,26 @@ var versionCmd = &cobra.Command{
 func printVersion(w io.Writer) {
 	commit, buildTime, modified := vcsInfo()
 
-	fmt.Fprintln(w, "forge:")
-	fmt.Fprintf(w, " Version:    %s\n", version)
+	// Errors writing to a cobra-managed writer have nowhere useful to go;
+	// swallow them via a local helper so the body stays readable.
+	p := func(format string, args ...any) {
+		_, _ = fmt.Fprintf(w, format, args...)
+	}
+
+	p("forge:\n")
+	p(" Version:    %s\n", version)
 	if commit != "" {
 		mod := ""
 		if modified {
 			mod = " (modified)"
 		}
-		fmt.Fprintf(w, " Git commit: %s%s\n", commit, mod)
+		p(" Git commit: %s%s\n", commit, mod)
 	}
 	if buildTime != "" {
-		fmt.Fprintf(w, " Built:      %s\n", buildTime)
+		p(" Built:      %s\n", buildTime)
 	}
-	fmt.Fprintf(w, " Go version: %s\n", runtime.Version())
-	fmt.Fprintf(w, " OS/Arch:    %s/%s\n", runtime.GOOS, runtime.GOARCH)
+	p(" Go version: %s\n", runtime.Version())
+	p(" OS/Arch:    %s/%s\n", runtime.GOOS, runtime.GOARCH)
 }
 
 // vcsInfo pulls git revision, commit time, and dirty-tree flag out of the
