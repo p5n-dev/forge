@@ -96,24 +96,24 @@ colima start                # daemon up; from here `docker ps` etc. work
 
 FORGE only needs `docker` and `docker compose` on PATH and a daemon for them to reach; it doesn't care which backend is providing it.
 
-`forge` itself is distributed as a pre-built single binary on the [GitHub Releases page](https://github.com/<owner>/forge/releases) — see **Quick Start** below. If you want to build from source or hack on FORGE itself, the **Contributing** section near the end has the full local-dev setup.
+`forge` itself is distributed as a pre-built single binary on the [GitHub Releases page](https://github.com/p5n-dev/forge/releases) — see **Quick Start** below. If you want to build from source or hack on FORGE itself, the **Contributing** section near the end has the full local-dev setup.
 
 ## Quick start
 
 ### 1. Install `forge`
 
-Pre-built binaries are published to [GitHub Releases](https://github.com/<owner>/forge/releases) on every code-touching push to `main` (markdown-only edits don't trigger a release). Apple Silicon is the supported runtime.
+Pre-built binaries are published to [GitHub Releases](https://github.com/p5n-dev/forge/releases) on every code-touching push to `main` (markdown-only edits don't trigger a release). Apple Silicon is the supported runtime.
 
 ```sh
 # Pick the latest release tag from the Releases page (e.g. v2026.05.06.42-gabc1234).
 TAG=v2026.05.06.42-gabc1234
 curl -L -o forge \
-    "https://github.com/<owner>/forge/releases/download/${TAG}/forge-darwin-arm64"
+    "https://github.com/p5n-dev/forge/releases/download/${TAG}/forge-darwin-arm64"
 chmod +x forge
 sudo install -m 0755 forge /usr/local/bin/forge
 
 # Verify integrity against the release's SHA256SUMS
-curl -L "https://github.com/<owner>/forge/releases/download/${TAG}/SHA256SUMS" \
+curl -L "https://github.com/p5n-dev/forge/releases/download/${TAG}/SHA256SUMS" \
     | shasum -a 256 -c -
 
 forge version    # forge v2026.05.06.42-gabc1234
@@ -407,7 +407,7 @@ In addition to the day-to-day `vfkit` + Docker:
 ### Build + test
 
 ```sh
-git clone https://github.com/<owner>/forge.git
+git clone https://github.com/p5n-dev/forge.git
 cd forge
 go build -o forge .       # produces ./forge in CWD
 sudo install -m 0755 forge /usr/local/bin/forge   # or just leave in CWD
@@ -430,7 +430,7 @@ Three GitHub Actions workflows drive CI/CD:
 So the day-to-day flow is:
 
 - Open a PR → `test.yml` validates the change.
-- Merge to `main` → if the diff touched any code, `release.yml` cuts a new versioned binary release on the [Releases page](https://github.com/<owner>/forge/releases). If the diff was docs only, nothing happens.
+- Merge to `main` → if the diff touched any code, `release.yml` cuts a new versioned binary release on the [Releases page](https://github.com/p5n-dev/forge/releases). If the diff was docs only, nothing happens.
 - For an explicit base-image release, push a `v*` tag → `image.yml` produces and uploads the `.img.gz` + SBOMs.
 
 ### Supply-chain hygiene
