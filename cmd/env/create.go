@@ -434,6 +434,15 @@ func seedWorkspaceFromProject(ctx context.Context, projectRoot, workspaceDir, cl
 	if out, err := exec.CommandContext(ctx, "git", addArgs...).CombinedOutput(); err != nil {
 		return fmt.Errorf("git add: %w: %s", err, strings.TrimSpace(string(out)))
 	}
+	// `git add` is a no-op when the workspace already contains the seed
+	// files in identical form — that happens when the upstream Forgejo
+	// repo was previously seeded (or initialised with these files by
+	// some other path). Detect that and return early; the subsequent
+	// `git commit` would otherwise fail with "nothing to commit".
+	noDiff := exec.CommandContext(ctx, "git", "-C", workspaceDir, "diff", "--cached", "--quiet")
+	if err := noDiff.Run(); err == nil {
+		return nil
+	}
 	commit := exec.CommandContext(ctx, "git",
 		"-C", workspaceDir,
 		"-c", "user.name=forge",
