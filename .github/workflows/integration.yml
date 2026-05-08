@@ -74,13 +74,12 @@ jobs:
       - name: Verify SSH reachability
         if: steps.image_pull.outputs.have_image == 'true'
         run: |
-          IP=$(jq -r .ip "$HOME/.forge/envs/ci-test/state.json")
-          test -n "$IP"
-          ssh -i "$HOME/.forge/envs/ci-test/id_ed25519" \
-              -o StrictHostKeyChecking=accept-new \
-              -o UserKnownHostsFile=/dev/null \
-              -o ConnectTimeout=15 \
-              forge@"$IP" echo "ok-from-vm"
+          # Exercise the same vsock-bridged path users hit, via the
+          # binary itself rather than duplicating ssh + ProxyCommand
+          # plumbing in shell. `forge env ssh` runs the trailing
+          # command non-interactively and exits with the remote
+          # command's exit code.
+          forge env ssh ci-test -- echo "ok-from-vm"
 
       - name: Lifecycle stop / start / destroy
         if: steps.image_pull.outputs.have_image == 'true'
