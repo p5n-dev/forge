@@ -13,7 +13,7 @@ import (
 	"github.com/p5n-dev/forge/cmd/system"
 )
 
-var debug bool
+var debugFlag bool
 
 var rootCmd = &cobra.Command{
 	Use:   "forge",
@@ -22,7 +22,7 @@ var rootCmd = &cobra.Command{
 with native Kubernetes support.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		level := zerolog.InfoLevel
-		if debug {
+		if debugFlag {
 			level = zerolog.DebugLevel
 		}
 		log.Logger = zerolog.New(
@@ -38,7 +38,7 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug logging")
+	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "enable debug logging")
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(env.Cmd)
 	rootCmd.AddCommand(system.Cmd)
