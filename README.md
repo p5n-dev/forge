@@ -107,16 +107,20 @@ Pre-built binaries are published to [GitHub Releases](https://github.com/p5n-dev
 ```sh
 # Pick the latest release tag from the Releases page (e.g. v0.1.0).
 TAG=v0.1.0
-curl -L -o forge \
-    "https://github.com/p5n-dev/forge/releases/download/${TAG}/forge-darwin-arm64"
-chmod +x forge
-sudo install -m 0755 forge /usr/local/bin/forge
 
-# Verify integrity against the release's SHA256SUMS
-curl -L "https://github.com/p5n-dev/forge/releases/download/${TAG}/SHA256SUMS" \
-    | shasum -a 256 -c -
+# Download the binary and the checksum manifest with their original names
+curl -L -O "https://github.com/p5n-dev/forge/releases/download/${TAG}/forge-darwin-arm64"
+curl -L -O "https://github.com/p5n-dev/forge/releases/download/${TAG}/SHA256SUMS"
 
-forge version    # forge v2026.05.06.42-gabc1234
+# Verify integrity before installing. SHA256SUMS lists both arches, so we
+# filter to the line for the file we actually downloaded.
+grep ' forge-darwin-arm64$' SHA256SUMS | shasum -a 256 -c -
+
+# Install
+chmod +x forge-darwin-arm64
+sudo install -m 0755 forge-darwin-arm64 /usr/local/bin/forge
+
+forge version
 ```
 
 To build from source instead, see **Contributing**.

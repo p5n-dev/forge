@@ -112,21 +112,20 @@ jobs:
           body: |
             Auto-built from `${{ github.sha }}`.
 
-            **Install**
+            **Install (Apple Silicon)**
             ```sh
-            # Apple Silicon
-            curl -L -o forge https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/forge-darwin-arm64
-            chmod +x forge
-            sudo install -m 0755 forge /usr/local/bin/forge
+            TAG=${{ steps.version.outputs.version }}
 
-            # Verify
+            curl -L -O "https://github.com/${{ github.repository }}/releases/download/${TAG}/forge-darwin-arm64"
+            curl -L -O "https://github.com/${{ github.repository }}/releases/download/${TAG}/SHA256SUMS"
+
+            # Verify integrity before installing.
+            grep ' forge-darwin-arm64$' SHA256SUMS | shasum -a 256 -c -
+
+            chmod +x forge-darwin-arm64
+            sudo install -m 0755 forge-darwin-arm64 /usr/local/bin/forge
+
             forge version    # should print: forge ${{ steps.version.outputs.version }}
-            ```
-
-            **Verify integrity**
-            ```sh
-            curl -L -o SHA256SUMS https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/SHA256SUMS
-            shasum -a 256 -c SHA256SUMS
             ```
           files: |
             dist/forge-darwin-arm64
