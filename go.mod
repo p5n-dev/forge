@@ -9,8 +9,8 @@ require (
 	github.com/rs/zerolog v1.35.1
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/crypto v0.50.0
-	golang.org/x/term v0.42.0
+	golang.org/x/crypto v0.51.0
+	golang.org/x/term v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -46,9 +46,9 @@ require (
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/mod v0.32.0 // indirect
-	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	gvisor.dev/gvisor v0.0.0-20240916094835-a174eb65023f // indirect
